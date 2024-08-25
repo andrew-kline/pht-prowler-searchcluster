@@ -25,6 +25,7 @@ Parameters:
   pTableName:
     Description: Name of the DDB table to track the prowler results
     Type: String
+    Default: prowler-findings
 
   pAuditRoleName:
     Description: Default name of the AssumeRole to assume into accounts
@@ -151,8 +152,10 @@ Resources:
   ProwlerBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: RetainExceptOnCreate
-    DependsOn: 
+    DependsOn:
+      - 
       - ProwlerBucketNotificationTopicPolicy
+      - ProwlerBucketProcessedFindingsNotificationTopicPolicy
       - ProwlerBucketProcessedFindingsNotificationTopicPolicy
     Properties:
       # AccessControl: Private
@@ -173,6 +176,15 @@ Resources:
                 Rules:
                   - Name: prefix
                     Value: "prowler4-output/json-ocsf/"
+                  - Name: suffix
+                    Value: ".json"
+          - Event: 's3:ObjectCreated:*'
+            Topic: !Ref ProcessedAWSFindingsNotificationTopic
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: "prowler4-output/json-ocsf-processed/"
                   - Name: suffix
                     Value: ".json"
           - Event: 's3:ObjectCreated:*'
@@ -230,7 +242,7 @@ Resources:
               aws:SourceArn: !Sub "arn:aws:s3:*:*:${pBucketName}"
             StringEquals:
               aws:SourceAccount: !Ref AWS::AccountId
-
+  
   ProcessedAWSFindingsNotificationTopic:
     Type: AWS::SNS::Topic
     Properties:
@@ -259,7 +271,7 @@ Resources:
               aws:SourceArn: !Sub "arn:aws:s3:*:*:${pBucketName}"
             StringEquals:
               aws:SourceAccount: !Ref AWS::AccountId
-  
+
   GCPOutputNotificationTopic:
     Type: AWS::SNS::Topic
     Properties:
@@ -688,7 +700,7 @@ Resources:
       MessageRetentionPeriod: 36000
       ReceiveMessageWaitTimeSeconds: 10
       VisibilityTimeout: 1050
-  
+
   S3EventDecoratorQueueSubscription:
     Type: AWS::SNS::Subscription
     Properties:
@@ -725,7 +737,7 @@ Resources:
             ArnEquals:
               aws:SourceArn:
                 - !Ref OutputNotificationTopic
-  
+
   S3EventDecoratorQueueAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
@@ -748,6 +760,7 @@ Resources:
           - cAlarmActions
           - !Ref pAlertTopicArn
           - !Ref AWS::NoValue
+
 
   #
   # S3 -> SNS -> SQS -> Lambda Plumbing
