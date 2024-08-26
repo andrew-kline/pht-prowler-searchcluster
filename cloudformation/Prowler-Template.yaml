@@ -153,9 +153,7 @@ Resources:
     Type: AWS::S3::Bucket
     DeletionPolicy: RetainExceptOnCreate
     DependsOn:
-      - 
       - ProwlerBucketNotificationTopicPolicy
-      - ProwlerBucketProcessedFindingsNotificationTopicPolicy
       - ProwlerBucketProcessedFindingsNotificationTopicPolicy
     Properties:
       # AccessControl: Private
