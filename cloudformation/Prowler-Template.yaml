@@ -186,6 +186,15 @@ Resources:
                   - Name: suffix
                     Value: ".json"
           - Event: 's3:ObjectCreated:*'
+            Topic: !Ref ProcessedAWSFindingsNotificationTopic
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: "prowler4-output/json-ocsf-processed/"
+                  - Name: suffix
+                    Value: ".json"
+          - Event: 's3:ObjectCreated:*'
             Topic: !Ref GCPOutputNotificationTopic
             Filter:
               S3Key:
@@ -231,7 +240,7 @@ Resources:
               aws:SourceArn: !Sub "arn:aws:s3:*:*:${pBucketName}"
             StringEquals:
               aws:SourceAccount: !Ref AWS::AccountId
-
+  
   ProcessedAWSFindingsNotificationTopic:
     Type: AWS::SNS::Topic
     Properties:
@@ -260,7 +269,7 @@ Resources:
               aws:SourceArn: !Sub "arn:aws:s3:*:*:${pBucketName}"
             StringEquals:
               aws:SourceAccount: !Ref AWS::AccountId
-              
+
   GCPOutputNotificationTopic:
     Type: AWS::SNS::Topic
     Properties:
@@ -755,7 +764,7 @@ Resources:
       MessageRetentionPeriod: 36000
       ReceiveMessageWaitTimeSeconds: 10
       VisibilityTimeout: 1050
-      
+
   S3EventDecoratorQueueSubscription:
     Type: AWS::SNS::Subscription
     Properties:
@@ -810,6 +819,28 @@ Resources:
       Statistic: Average
       Threshold: 3
       TreatMissingData: missing
+      AlarmActions:
+        - !If
+          - cAlarmActions
+          - !Ref pAlertTopicArn
+          - !Ref AWS::NoValue
+
+  FindingsAlertFunctionErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${FindingsAlertFunction}-LambdaErrors
+      AlarmDescription: "Alarm if lambda errors out"
+      Namespace: "AWS/Lambda"
+      MetricName: "Errors"
+      Dimensions:
+      - Name: "FunctionName"
+        Value: !Ref FindingsAlertFunction
+      Statistic: "Sum"
+      ComparisonOperator: "GreaterThanThreshold"
+      Threshold: 0
+      EvaluationPeriods: 1
+      Period: 60
+      TreatMissingData: "ignore"
       AlarmActions:
         - !If
           - cAlarmActions
